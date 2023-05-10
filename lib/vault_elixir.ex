@@ -199,7 +199,7 @@ def vault(connection_options \\ []) do
         {prior_success?, Map.put(vault_data, :use_approle_token_success, false)}
       end
     catch
-      ex -> throw("app role/secret threw exception: #{inspect ex}")
+      e -> throw("app role/secret threw exception: #{inspect e}")
     end
   end
 
