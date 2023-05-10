@@ -55,7 +55,7 @@ defmodule VaultElixir do
     if length(status) == 0 do
       info_msg("All required variables were found in the environment")
     else
-      throw("vault.ensure_vars_set('#{var_list}' failed to find all the required variables")
+      throw("vault.ensure_vars_set('#{inspect var_list}' failed to find all the required variables")
     end
   end
 
