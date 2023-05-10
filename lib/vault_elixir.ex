@@ -198,8 +198,8 @@ def vault(connection_options \\ []) do
         info_msg("NOT checking OKD namespace token -- higher priority method was successful")
         {prior_success?, Map.put(vault_data, :use_approle_token_success, false)}
       end
-    except ex ->
-      throw("app role/secret threw exception: #{inspect ex}")
+    catch
+      ex -> throw("app role/secret threw exception: #{inspect ex}")
     end
   end
 
