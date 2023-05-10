@@ -275,7 +275,7 @@ def vault(connection_options \\ []) do
         {:ok, secret} ->
           Map.merge(acc, secret)
         {:error, reason} ->
-          throw("cannot read secret: #{sp}")
+          throw("cannot read secret: #{sp} reason: #{inspect(reason)}")
         end
       end)
       #debug_msg("secrets: #{inspect(secrets)}")
