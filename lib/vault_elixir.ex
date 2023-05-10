@@ -220,9 +220,40 @@ def vault(connection_options \\ []) do
     {:error, vault_data}
   end
 
+  def decode_role_secret_token({:ok, data}) do
+    data.auth.client_token
+  end
+
+  def decode_role_secret_token({:error, err}) do
+    error_msg("error decoding role_id/secret_id login response: #{inspect err}")
+    nil
+  end
+
   def vault_login(:role_secret, vault_data) do
-    #login_url = vault_data.provider_url <> "/auth/global/" <> vault_data.vault_fitz_endpoint <> "/login"
-    {:error, vault_data}
+    if !str_empty?(vault_data.vault_role_id) and !str_empty?(vault.vault_role_id) do
+      login_url = vault_data.provider_url <> "/v1/auth/ess-web/approle/login"
+      role_secret = %{
+        role_id: vault_data.vault_role_id,
+        secret_id: vault_data.vault_secret_id
+      }
+      payload = Jason.encode!(role_secret)
+      rv = post_request(login_url, payload, [{"content-type", "application/json;charset=utf8;"}], vault_data.connection_options)
+      case rv do
+        {:ok, body} ->
+          token = decode_role_secret_token(Jason.decode(body, keys: :atoms))
+          if token != nil,
+            do:
+              {:ok, Map.put(vault_data, :vault_login_token, token)},
+            else:
+              {:error, vault_data}
+        {:error, reason} ->
+          error_msg("role_id/secret_id login approach failure")
+          {:error, vault_data}
+      end
+    else
+      error_msg("role_id/secret_id login appoach - no vault_role_id or vault_secret_id given")
+      {:error, vault_data}
+    end
   end
 
   def vault_login(:dev_token, vault_data) do
@@ -283,6 +314,9 @@ def vault(connection_options \\ []) do
     end
   end
 
+  defp str_empty?(s) do
+    s == nil || String.length(s) == 0
+  end
   @doc """
   Issues a HTTPoison POST request to the given url.
 
