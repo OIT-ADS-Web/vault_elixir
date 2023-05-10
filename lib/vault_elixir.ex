@@ -257,7 +257,7 @@ def vault(connection_options \\ []) do
   end
 
   def parse_secret({:error, reason}, secret_path) do
-    error_msg("Error obtaining secret: #{secret_path}")
+    error_msg("Error obtaining secret: #{secret_path} - reason: #{inspect reason}")
     {:error, []}
   end
 
@@ -266,17 +266,13 @@ def vault(connection_options \\ []) do
     if rv == :ok do
       auth = get_auth_token_header(vault_data)
       secrets = Enum.reduce(vault_data.vault_secret_paths, %{}, fn sp,acc ->
-        case get_request(
+        {:ok, secrets} = get_request(
           "#{vault_data.provider_url}/v1/#{sp}",
           auth,
           vault_data.connection_options
           )
-          |> parse_secret(sp) do
-        {:ok, secret} ->
-          Map.merge(acc, secret)
-        {:error, reason} ->
-          throw("cannot read secret: #{sp} reason: #{inspect(reason)}")
-        end
+          |> parse_secret(sp)
+        Map.merge(acc, secret)
       end)
       #debug_msg("secrets: #{inspect(secrets)}")
       System.put_env(secrets)
@@ -354,79 +350,4 @@ def vault(connection_options \\ []) do
     Logger.debug("Vault: #{msg}")
   end
 
-  @xx """
-  def loadx() do
-    local_token = get_config(:vault_token)
-    # if local_token is nil, get a new token and store it
-    # otherwise, use the token to get the secrets
-    if local_token == nil do
-      # get a new vault token
-      #info_msg("vault token_uri is ## {Utils.inspect_deep(token_uri())}") #payload is: ## {Utils.inspect_deep(token_payload())}")
-      rv = Httpoison.post_request(
-        token_uri(),
-        token_payload(),
-        [{"Content-type", "application/json"}],
-        get_config(:options)
-      )
-     |> case do
-      #info_msg("vault result http result is ## {Utils.inspect_deep(rv)}")
-      #case rv do
-        {:ok, body} -> {:ok, Jason.decode!(body) |> get_auth_token_header() |> load_secrets(:secrets)}
-        {:error, error} -> {:error, "Vault failed at client_token. Error: ## {error}"}
-      end
-    else
-      {:ok, get_auth_token_header(%{"auth" => %{"client_token" => local_token }}) |> load_secrets(:secrets) }
-    end
-  end
-
-  # generate header with token
-  defp get_auth_token_headerx(data) do
-    [{"X-Vault-Token", Map.get(data["auth"], "client_token")}]
-  end
-
-  defp load_secrets(token, :secrets) do
-    get_config(:secrets)
-    |> Enum.map(fn rs -> {rs.table, get_secrets(rs, token)} end)
-    |> Enum.into(%{})
-  end
-
-  defp get_secrets(secret, token) do
-    rv = Httpoison.get_request(
-      Path.join([get_config(:provider_url) || "", secret.path]),
-      token,
-      get_config(:options)
-    )
-    |> case do
-    #info_msg("vault result http result is ## {Utils.inspect_deep(rv)}")
-    #case rv do
-      {:ok, body} ->
-        body
-        |> Jason.decode!(keys: :atoms)
-        |> Map.get(:data)
-        |> Map.get(:data)
-      {:error, _error} ->
-        []
-    end
-  end
-
-  # access to vault configuration
-  defp get_configx(key) do
-    Application.fetch_env!(Mix.Project.config()[:app], :vault)[key]
-  end
-
-  defp token_urix() do
-    get_config(:provider_url) <> "/auth/global/" <> get_config(:vault_token_endpoint) <> "/login"
-  end
-
-  defp namespace_tokenx() do
-    path = '/var/run/secrets/kubernetes.io/serviceaccount/token'
-    File.read!(path)
-  end
-
-  # set token payload
-  defp token_payloadx() do
-    IO.puts("vault_okd_role: ## {get_config(:vault_okd_role)}")
-    %{jwt: namespace_token(), role: (get_config(:vault_okd_role) || raise "Unable to obtain vault_okd_role from env")} |> Jason.encode!()
-  end
-  """
 end
