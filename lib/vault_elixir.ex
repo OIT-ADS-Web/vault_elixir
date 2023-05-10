@@ -1,3 +1,4 @@
+
 defmodule VaultElixir do
   @moduledoc """
   Vault support for elixir.
@@ -17,8 +18,8 @@ defmodule VaultElixir do
     vault_login_token: nil, # when supplied by vault login via role/secret, okd jwt login or copied from vault_token
     vault_role_id: nil,
     vault_secret_id: nil,
-    namespace_token_path: nil,
-    namespace_jwt: nil,
+    vault_namespace_token_path: nil,
+    vault_namespace_jwt: nil,
     namespace_token: nil,
     vault_fitz_endpoint: nil,
     vault_okd_role: nil,
@@ -160,16 +161,16 @@ def vault(connection_options \\ []) do
       |> Map.put(:vault_secret_id, System.get_env("VAULT_SECRET_ID")) # optional
       |> Map.put(:vault_fitz_endpoint, System.get_env("VAULT_FITZ_ENDPOINT")) # optional
       |> Map.put(:vault_okd_role, System.get_env("VAULT_OKD_ROLE")) # optional
-      |> Map.put(:namespace_token_path, System.get_env("NAMESPACE_TOKEN_PATH")) # optional
+      |> Map.put(:vault_namespace_token_path, System.get_env("VAULT_NAMESPACE_TOKEN_PATH")) # optional
       |> Map.put(:vault_secret_paths, secret_paths)
 
     vault_data
   end
 
   defp get_namespace_token(vault_data) do
-    path = vault_data.namespace_token_path
+    path = vault_data.vault_namespace_token_path
     token = if path != nil, do: File.read!(path), else: nil
-    Map.put(vault_data, :namespace_token, token)
+    Map.put(vault_data, :vault_namespace_token, token)
   end
 
   def use_namespace_token({prior_success?, vault_data}) do
@@ -187,19 +188,16 @@ def vault(connection_options \\ []) do
   end
 
   def use_approle_token({prior_success?, vault_data}) do
-    try do
-      if prior_success? == false do
-        info_msg("Checking approle token")
-        success? = false
-        fetch_secrets(:role_secret, vault_data)
-        info_msg("OKD vault approle token method #{if success? == false, do: "not "}successful")
-        {success?, Map.put(vault_data, :use_approle_token_success, success?)}
-      else
-        info_msg("NOT checking OKD namespace token -- higher priority method was successful")
-        {prior_success?, Map.put(vault_data, :use_approle_token_success, false)}
-      end
-    catch
-      e -> throw("app role/secret threw exception: #{inspect e}")
+    if prior_success? == false do
+      info_msg("Checking approle token")
+      success? = false
+      {rv, vault_data} = fetch_secrets(:role_secret, vault_data)
+      success? = (rv == :ok)
+      info_msg("OKD vault approle token method #{if success? == false, do: "not "}successful")
+      {success?, Map.put(vault_data, :use_approle_token_success, success?)}
+    else
+      info_msg("NOT checking OKD namespace token -- higher priority method was successful")
+      {prior_success?, Map.put(vault_data, :use_approle_token_success, false)}
     end
   end
 
@@ -219,9 +217,39 @@ def vault(connection_options \\ []) do
     end
   end
 
+  def decode_okd_role_secret_token({:ok, data}) do
+    data.authorization.auth.client_token
+  end
+
+  def decode_okd_role_secret_token({:error, err}) do
+    error_msg("error decoding okd role login response: #{inspect err}")
+    nil
+  end
+
   def vault_login(:okd_role, vault_data) do
-    #login_url = vault_data.provider_url <> "/auth/global/" <> vault_data.vault_fitz_endpoint <> "/login"
-    {:error, vault_data}
+    if !str_empty?(vault_data.vault_fitz_endpoint) do
+      login_url = vault_data.provider_url <> "/auth/global/" <> vault_data.vault_fitz_endpoint <> "/login"
+      role_jwt = %{
+        jwt: vault_data.vault_namespace_token,
+        role: vault_data.vault_okd_role
+      }
+      payload = Jason.encode!(role_jwt)
+      rv = post_request(login_url, payload, [{"content-type", "application/json"}], vault_data.connection_options)
+      case rv do
+        {:ok, body} ->
+          token = decode_okd_role_secret_token(Jason.decode(body, keys: :atoms))
+          if token != nil,
+            do:
+              {:ok, Map.put(vault_data, :vault_login_token, token)},
+            else:
+              {:error, vault_data}
+        {:error, reason} ->
+          error_msg("okd role login approach failure. Reason: #{inspect reason}")
+          {:error, vault_data}
+      end
+    else
+      {:error, vault_data}
+    end
   end
 
   def decode_role_secret_token({:ok, data}) do
@@ -234,14 +262,14 @@ def vault(connection_options \\ []) do
   end
 
   def vault_login(:role_secret, vault_data) do
-    if !str_empty?(vault_data.vault_role_id) and !str_empty?(vault.vault_role_id) do
+    if (!str_empty?(vault_data.vault_role_id) and !str_empty?(vault_data.vault_secret_id)) do
       login_url = vault_data.provider_url <> "/v1/auth/ess-web/approle/login"
       role_secret = %{
         role_id: vault_data.vault_role_id,
         secret_id: vault_data.vault_secret_id
       }
       payload = Jason.encode!(role_secret)
-      rv = post_request(login_url, payload, [{"content-type", "application/json;charset=utf8;"}], vault_data.connection_options)
+      rv = post_request(login_url, payload, [{"content-type", "application/json"}], vault_data.connection_options)
       case rv do
         {:ok, body} ->
           token = decode_role_secret_token(Jason.decode(body, keys: :atoms))
@@ -251,11 +279,11 @@ def vault(connection_options \\ []) do
             else:
               {:error, vault_data}
         {:error, reason} ->
-          error_msg("role_id/secret_id login approach failure")
+          error_msg("role_id/secret_id login approach failure. Reason: #{inspect reason}")
           {:error, vault_data}
       end
     else
-      error_msg("role_id/secret_id login appoach - no vault_role_id or vault_secret_id given")
+      error_msg("role_id/secret_id login appoach - requires VAULT_ROLE_ID and VAULT_SECRET_ID")
       {:error, vault_data}
     end
   end
@@ -307,6 +335,7 @@ def vault(connection_options \\ []) do
           vault_data.connection_options
           )
           |> parse_secret(sp)
+        #info_msg("secret: #{inspect secret}")
         Map.merge(acc, secret)
       end)
       #debug_msg("secrets: #{inspect(secrets)}")
@@ -319,7 +348,7 @@ def vault(connection_options \\ []) do
   end
 
   defp str_empty?(s) do
-    s == nil || String.length(s) == 0
+    (s == nil || String.length(s) == 0)
   end
   @doc """
   Issues a HTTPoison POST request to the given url.
