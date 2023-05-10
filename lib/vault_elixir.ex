@@ -266,13 +266,17 @@ def vault(connection_options \\ []) do
     if rv == :ok do
       auth = get_auth_token_header(vault_data)
       secrets = Enum.reduce(vault_data.vault_secret_paths, %{}, fn sp,acc ->
-        {:ok, secret} = get_request(
+        case get_request(
           "#{vault_data.provider_url}/v1/#{sp}",
           auth,
           vault_data.connection_options
           )
-        |> parse_secret(sp)
-        Map.merge(acc, secret)
+          |> parse_secret(sp) do
+        {:ok, secret} ->
+          Map.merge(acc, secret)
+        {:error, reason} ->
+          throw("cannot read secret: #{sp}")
+        end
       end)
       #debug_msg("secrets: #{inspect(secrets)}")
       System.put_env(secrets)
