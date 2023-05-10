@@ -266,7 +266,7 @@ def vault(connection_options \\ []) do
     if rv == :ok do
       auth = get_auth_token_header(vault_data)
       secrets = Enum.reduce(vault_data.vault_secret_paths, %{}, fn sp,acc ->
-        {:ok, secrets} = get_request(
+        {:ok, secret} = get_request(
           "#{vault_data.provider_url}/v1/#{sp}",
           auth,
           vault_data.connection_options
