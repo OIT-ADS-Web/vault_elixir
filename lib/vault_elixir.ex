@@ -204,7 +204,7 @@ def vault(connection_options \\ []) do
   def use_developer_token({prior_success?, vault_data}) do
     if prior_success? == false do
       info_msg("Checking developer token")
-      rv = if vault_data.vault_token != nil do
+      {rv, vault_data} = if vault_data.vault_token != nil do
         fetch_secrets(:dev_token, vault_data)
       else
         success? = false
@@ -227,8 +227,8 @@ def vault(connection_options \\ []) do
   end
 
   def vault_login(:okd_role, vault_data) do
-    if !str_empty?(vault_data.vault_fitz_endpoint) do
-      login_url = vault_data.provider_url <> "/auth/global/" <> vault_data.vault_fitz_endpoint <> "/login"
+    if (!str_empty?(vault_data.vault_fitz_endpoint) and !str_empty?(vault_data.vault_okd_role)) do
+      login_url = vault_data.provider_url <> "/v1/auth/global/" <> vault_data.vault_fitz_endpoint <> "/login"
       role_jwt = %{
         jwt: vault_data.vault_namespace_token,
         role: vault_data.vault_okd_role
@@ -414,7 +414,7 @@ def vault(connection_options \\ []) do
   end
 
   def debug_msg(msg) do
-    Logger.debug("Vault: #{msg}")
+    #Logger.debug("Vault: #{msg}")
   end
 
 end
