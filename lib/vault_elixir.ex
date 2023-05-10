@@ -187,15 +187,19 @@ def vault(connection_options \\ []) do
   end
 
   def use_approle_token({prior_success?, vault_data}) do
-    if prior_success? == false do
-      info_msg("Checking approle token")
-      success? = false
-      fetch_secrets(:role_secret, vault_data)
-      info_msg("OKD vault approle token method #{if success? == false, do: "not "}successful")
-      {success?, Map.put(vault_data, :use_approle_token_success, success?)}
-    else
-      info_msg("NOT checking OKD namespace token -- higher priority method was successful")
-      {prior_success?, Map.put(vault_data, :use_approle_token_success, false)}
+    try do
+      if prior_success? == false do
+        info_msg("Checking approle token")
+        success? = false
+        fetch_secrets(:role_secret, vault_data)
+        info_msg("OKD vault approle token method #{if success? == false, do: "not "}successful")
+        {success?, Map.put(vault_data, :use_approle_token_success, success?)}
+      else
+        info_msg("NOT checking OKD namespace token -- higher priority method was successful")
+        {prior_success?, Map.put(vault_data, :use_approle_token_success, false)}
+      end
+    except ex ->
+      throw("app role/secret threw exception: #{inspect ex}")
     end
   end
 
