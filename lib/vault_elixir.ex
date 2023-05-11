@@ -218,8 +218,7 @@ def vault(connection_options \\ []) do
   end
 
   def decode_okd_role_secret_token({:ok, data}) do
-    # data.authorization.auth.client_token
-    data.auth.client_token
+    data.authorization.auth.client_token
   end
 
   def decode_okd_role_secret_token({:error, err}) do
