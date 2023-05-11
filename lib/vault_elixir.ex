@@ -19,8 +19,7 @@ defmodule VaultElixir do
     vault_role_id: nil,
     vault_secret_id: nil,
     vault_namespace_token_path: nil,
-    vault_namespace_jwt: nil,
-    namespace_token: nil,
+    vault_namespace_token: nil,
     vault_fitz_endpoint: nil,
     vault_okd_role: nil,
     vault_auth_token_uri: nil,
@@ -81,7 +80,7 @@ defmodule VaultElixir do
         pair JSON. NOTE that it's possible to have the value be a JSON, but the application
         would be responsible for parsing the vault into sub-components.
       2. loads the REQUIRED env value of VAULT_PROVIDER_URL to get the vault https address.
-      3. loads the OPTIONAL env values for NAMESPACE_TOKEN_PATH, VAULT_FITZ_ENDPOINT,
+      3. loads the OPTIONAL env values for VAULT_NAMESPACE_TOKEN_PATH, VAULT_FITZ_ENDPOINT,
           and VAULT_OKD_ROLE -- these values are required for OKD vault token login
       4. loads OPTIONAL VAULT_ROLE_ID and VAULT_SECRET_ID env values -- these values
           are required for vault role_id/secret_id login
@@ -92,7 +91,7 @@ defmodule VaultElixir do
         If SKIP_VAULT is specified, the application environment itself could be used to
           propagate values for vault secrets e.g. using a development .env for startup.
 
-      6. OKD Vault token login is attempted using NAMESPACE_TOKEN_PATH, VAULT_FITZ_ENDPOINT
+      6. OKD Vault token login is attempted using VAULT_NAMESPACE_TOKEN_PATH, VAULT_FITZ_ENDPOINT
          If successful processing continues at step 10.
       7. OKD Role_id/secret_id login is attempted using VAULT_SECRET_ID and VAULT_ROLE_ID
          If successful processing continues at step 10.
@@ -170,6 +169,7 @@ def vault(connection_options \\ []) do
   defp get_namespace_token(vault_data) do
     path = vault_data.vault_namespace_token_path
     token = if path != nil, do: File.read!(path), else: nil
+    info_msg("vault_namespace_token length is: #{strlen(token)}")
     Map.put(vault_data, :vault_namespace_token, token)
   end
 
@@ -218,7 +218,8 @@ def vault(connection_options \\ []) do
   end
 
   def decode_okd_role_secret_token({:ok, data}) do
-    data.authorization.auth.client_token
+    // data.authorization.auth.client_token
+    data.auth.client_token
   end
 
   def decode_okd_role_secret_token({:error, err}) do
@@ -237,6 +238,7 @@ def vault(connection_options \\ []) do
       rv = post_request(login_url, payload, [{"content-type", "application/json"}], vault_data.connection_options)
       case rv do
         {:ok, body} ->
+          info_msg("okd role login success")
           token = decode_okd_role_secret_token(Jason.decode(body, keys: :atoms))
           if token != nil,
             do:
@@ -345,6 +347,10 @@ def vault(connection_options \\ []) do
       error_msg("Vault login failed for #{translate_token_method(token_method)}")
       {rv, vault_data}
     end
+  end
+
+  defp strlen(s) do
+    if str_empty?(s), do: 0, else: String.length(s)
   end
 
   defp str_empty?(s) do
