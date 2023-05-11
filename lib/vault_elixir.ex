@@ -218,7 +218,7 @@ def vault(connection_options \\ []) do
   end
 
   def decode_okd_role_secret_token({:ok, data}) do
-    data.authorization.auth.client_token
+    data.auth.client_token
   end
 
   def decode_okd_role_secret_token({:error, err}) do
@@ -330,14 +330,19 @@ def vault(connection_options \\ []) do
     if rv == :ok do
       auth = get_auth_token_header(vault_data)
       secrets = Enum.reduce(vault_data.vault_secret_paths, %{}, fn sp,acc ->
-        {:ok, secret} = get_request(
-          "#{vault_data.provider_url}/v1/#{sp}",
-          auth,
-          vault_data.connection_options
+        {rv, secret} = get_request(
+            "#{vault_data.provider_url}/v1/#{sp}",
+            auth,
+            vault_data.connection_options
           )
           |> parse_secret(sp)
         #info_msg("secret: #{inspect secret}")
-        Map.merge(acc, secret)
+        case rv do
+          :ok -> Map.merge(acc, secret)
+          :error ->
+            error_msg("get secrets failed for secret path: #{sp}")
+            acc
+        end
       end)
       #debug_msg("secrets: #{inspect(secrets)}")
       System.put_env(secrets)
@@ -407,6 +412,9 @@ def vault(connection_options \\ []) do
   end
 
   defp get_auth_token_header(vault_data) do
+    if vault_data.vault_login_token == nil do
+      error_msg("get_auth_token_header: vault_login_token is nil - login will fail.")
+    end
     [{"X-Vault-Token", vault_data.vault_login_token}]
   end
 
