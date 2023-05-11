@@ -72,7 +72,7 @@ defmodule VaultElixir do
     If the SKIP_VAULT environment variable is set to true, yes, or 1 value, vault() does nothing.
 
     If SKIP_VAULT is false then vault():
-      1. loads the REQUIRED env value of VAULT_SECRET_PATHS to get the semi-colon separated names
+      1. loads the REQUIRED env value of VAULT_SECRET_PATH to get the semi-colon separated names
         of the paths of vault secrets to load.  By default, the last part of the path is use
         as part of the resulting name placed into the environment for each secret component.
         Each secret component should be a single name value pair (only 1 level of depth allowed).
@@ -99,7 +99,7 @@ defmodule VaultElixir do
          If successful processing continues at step 10.
       9. Since/If no login methods were successful, an exception is raised and program execution stops.
      10. At this point, some form of vault login was successful, so vault values for
-          EACH of the VAULT_SECRET_PATHS requested are read.
+          EACH of the VAULT_SECRET_PATH requested are read.
           For each path component, the secrets are read (key, values from vault), and
             for each key in the secret an environment variable is created with a key
             composed of the last component of the path and the key of the vault
@@ -150,8 +150,8 @@ def vault(connection_options \\ []) do
   end
 
   def load_required_env(vault_data) do
-    secret_paths = String.split(System.get_env("VAULT_SECRET_PATHS") || "", [";",","])
-    if length(secret_paths) < 1, do: throw("Vault() requires environment variable VAULT_SECRET_PATHS")
+    secret_paths = String.split(System.get_env("VAULT_SECRET_PATH") || "", [";",","])
+    if length(secret_paths) < 1, do: throw("Vault() requires environment variable VAULT_SECRET_PATH")
 
     vault_data = vault_data
       |> Map.put(:provider_url, (System.get_env("VAULT_PROVIDER_URL") || throw "Vault() requires environment variable VAULT_PROVIDER_URL"))
