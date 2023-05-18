@@ -11,11 +11,11 @@
   
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `vault_elixir` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `vault_elixir` to your list of dependencies in `mix.exs`:
 
-NOTE: Rather than using branch: below, use tag: and pick the latest tagged version to prevent
-potential issues with interface changes.
+NOTE: Rather than using 'branch:' below, use 'tag:' and pick the latest tagged version to prevent
+potential issues with interface changes. See 'mix help deps' for more information.
+
 ```elixir
 def deps do
   [
