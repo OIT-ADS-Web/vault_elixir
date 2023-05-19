@@ -326,6 +326,7 @@ def vault(connection_options \\ []) do
   end
 
   def fetch_secrets(token_method, vault_data) do
+    info_msg("processing secret path: #{sp}")
     {rv, vault_data} = vault_login(token_method, vault_data)
     if rv == :ok do
       auth = get_auth_token_header(vault_data)
