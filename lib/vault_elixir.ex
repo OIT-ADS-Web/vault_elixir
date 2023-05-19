@@ -150,7 +150,9 @@ def vault(connection_options \\ []) do
   end
 
   def load_required_env(vault_data) do
-    secret_paths = String.split(System.get_env("VAULT_SECRET_PATH") || "", [";",","])
+    secret_path = System.get_env("VAULT_SECRET_PATH")
+    info_msg("vault secret path input: #{inspect(secret_path)}")
+    secret_paths = String.split(secret_path, [";",","])
     if length(secret_paths) < 1, do: throw("Vault() requires environment variable VAULT_SECRET_PATH")
     info_msg("vault secret paths: #{inspect(secret_paths)}")
 
