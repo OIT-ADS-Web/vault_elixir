@@ -164,7 +164,7 @@ def vault(connection_options \\ []) do
       |> Map.put(:vault_fitz_endpoint, System.get_env("VAULT_FITZ_ENDPOINT")) # optional
       |> Map.put(:vault_okd_role, System.get_env("VAULT_OKD_ROLE")) # optional
       |> Map.put(:vault_namespace_token_path, System.get_env("VAULT_NAMESPACE_TOKEN_PATH")) # optional
-      |> Map.put(:vault_secret_paths, secret_paths)
+      |> Map.put(:vault_secret_paths, secret_paths) $ required, checked above
 
     vault_data
   end
@@ -196,10 +196,10 @@ def vault(connection_options \\ []) do
       success? = false
       {rv, vault_data} = fetch_secrets(:role_secret, vault_data)
       success? = (rv == :ok)
-      info_msg("OKD vault approle token method #{if success? == false, do: "not "}successful")
+      info_msg("vault approle (role_id/secret_id) token method #{if success? == false, do: "not "}successful")
       {success?, Map.put(vault_data, :use_approle_token_success, success?)}
     else
-      info_msg("NOT checking OKD namespace token -- higher priority method was successful")
+      info_msg("NOT checking vault approle (role_id/secret_id) token -- higher priority method was successful")
       {prior_success?, Map.put(vault_data, :use_approle_token_success, false)}
     end
   end
