@@ -151,10 +151,10 @@ def vault(connection_options \\ []) do
 
   def load_required_env(vault_data) do
     secret_path = System.get_env("VAULT_SECRET_PATH")
-    info_msg("vault secret path input: #{inspect(secret_path)}")
+    info_msg("vault secret path(s) input: #{inspect(secret_path)}")
     secret_paths = String.split(secret_path, [";",","])
     if length(secret_paths) < 1, do: throw("Vault() requires environment variable VAULT_SECRET_PATH")
-    info_msg("vault secret paths: #{inspect(secret_paths)}")
+    ## info_msg("vault secret paths: #{inspect(secret_paths)}")
 
     vault_data = vault_data
       |> Map.put(:provider_url, (System.get_env("VAULT_PROVIDER_URL") || throw "Vault() requires environment variable VAULT_PROVIDER_URL"))
