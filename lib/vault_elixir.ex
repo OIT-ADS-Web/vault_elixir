@@ -164,7 +164,7 @@ def vault(connection_options \\ []) do
       |> Map.put(:vault_fitz_endpoint, System.get_env("VAULT_FITZ_ENDPOINT")) # optional
       |> Map.put(:vault_okd_role, System.get_env("VAULT_OKD_ROLE")) # optional
       |> Map.put(:vault_namespace_token_path, System.get_env("VAULT_NAMESPACE_TOKEN_PATH")) # optional
-      |> Map.put(:vault_secret_paths, secret_paths) $ required, checked above
+      |> Map.put(:vault_secret_paths, secret_paths) # required, checked above
 
     vault_data
   end
