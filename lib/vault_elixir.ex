@@ -136,6 +136,10 @@ def vault(connection_options \\ []) do
     end
   end
 
+  def get_env() do
+    System.get_env()
+  end
+
   def get_env(env_name) do
     System.get_env(env_name)
   end
