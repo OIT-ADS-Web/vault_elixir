@@ -153,7 +153,10 @@ def vault(connection_options \\ []) do
     {successful?, vault_data}
   end
 
-
+  def prefix_secrets?() do
+    env = System.get_env("VAULT_PREFIX_SECRETS") || "false"
+    (env == "true" || env == "1" || env == "yes")
+  end
 
   def load_required_env(vault_data) do
     secret_path = System.get_env("VAULT_SECRET_PATH")
@@ -162,7 +165,6 @@ def vault(connection_options \\ []) do
     secret_paths = String.split(secret_path, [";",","])
     if length(secret_paths) < 1, do: throw("Vault() requires environment variable VAULT_SECRET_PATH")
     ## info_msg("vault secret paths: #{inspect(secret_paths)}")
-
     vault_data = vault_data
       |> Map.put(:provider_url, (System.get_env("VAULT_PROVIDER_URL") || throw "Vault() requires environment variable VAULT_PROVIDER_URL"))
       |> Map.put(:vault_token, System.get_env("VAULT_TOKEN")) # optional
@@ -171,6 +173,7 @@ def vault(connection_options \\ []) do
       |> Map.put(:vault_fitz_endpoint, System.get_env("VAULT_FITZ_ENDPOINT")) # optional
       |> Map.put(:vault_okd_role, System.get_env("VAULT_OKD_ROLE")) # optional
       |> Map.put(:vault_namespace_token_path, System.get_env("VAULT_NAMESPACE_TOKEN_PATH")) # optional
+      |> Map.put(:prefix_secrets, prefix_secrets?()) # optional var PREFIX_SECRETS defaults to false
       |> Map.put(:vault_secret_paths, secret_paths) # required, checked above
 
     vault_data
@@ -313,14 +316,19 @@ def vault(connection_options \\ []) do
     end
   end
 
-  def parse_secret({:ok, vault_resp}, secret_path) do
+  def parse_secret({:ok, vault_resp}, secret_path, vault_data) do
     hlq = Enum.take(String.split(secret_path, "/"), -1)
     {:ok,
       Enum.reduce(
         Jason.decode!(vault_resp, keys: :atoms).data.data,
         %{},
         fn {k, v}, acc ->
-          key = String.upcase("#{hlq}_#{to_string(k)}")
+          hlq = if vault_data.prefix_secrets do
+            "#{hlq}_"
+          else
+            ""
+          end
+          key = String.upcase("#{hlq}#{to_string(k)}")
           Map.put(
             acc,
             key,
@@ -330,7 +338,7 @@ def vault(connection_options \\ []) do
     }
   end
 
-  def parse_secret({:error, reason}, secret_path) do
+  def parse_secret({:error, reason}, secret_path, _vault_data) do
     error_msg("Error obtaining secret: #{secret_path} - reason: #{inspect reason}")
     {:error, []}
   end
@@ -346,7 +354,7 @@ def vault(connection_options \\ []) do
             auth,
             vault_data.connection_options
           )
-          |> parse_secret(sp)
+          |> parse_secret(sp, vault_data)
         #info_msg("secret: #{inspect secret}")
         case rv do
           :ok -> Map.merge(acc, secret)
