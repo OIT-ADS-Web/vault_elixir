@@ -19,7 +19,7 @@ potential issues with interface changes. See 'mix help deps' for more informatio
 ```elixir
 def deps do
   [
-    {:vault_elixir, git: "https://github.com/OIT-ADS-Web/vault_elixir", branch: "main"}
+    {:vault_elixir, git: "https://github.com/OIT-ADS-Web/vault_elixir", tag: "vN.N.N"}
   ]
 end
 ```
