@@ -7,7 +7,7 @@
   In config/runtime.exs, use VaultElixir.ensure_vars_set([ LIST of ENVIRONMENT VARIABLES from Vault ]) to ensure that vault
     was configured for the application correctly.
    
-  Move config blocks from config/config.exs (or dev.exs or prod.exs) into config/runtime.exs, but change the calls to System.get_env() to VaultElixir.get_env().  This ensures that variables set by vault are found or, if SKIP_VAULT=true is set that the environment variables from the .env file are found in local development mode.
+  Move config blocks from config/config.exs (or dev.exs or prod.exs) into config/runtime.exs, but change System.get_env() calls to VaultElixir.get_env().  This ensures that variables set by vault are found and if SKIP_VAULT=true is set that the environment variables from the .env file are found in local development mode.
   
 ## Installation
 
